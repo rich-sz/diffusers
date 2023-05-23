@@ -12,30 +12,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# NOTE: This file is deprecated and will be removed in a future version.
+# It only exists so that temporarely `from diffusers.pipelines import DiffusionPipeline` works
+from ...utils import deprecate
+from ..controlnet.multicontrolnet import MultiControlNetModel  # noqa: F401
+from ..controlnet.pipeline_controlnet import StableDiffusionControlNetPipeline  # noqa: F401
 
-import inspect
-import os
-from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 
-import numpy as np
-import PIL.Image
-import torch
-from torch import nn
-from transformers import CLIPImageProcessor, CLIPTextModel, CLIPTokenizer
-
-from ...loaders import TextualInversionLoaderMixin
-from ...models import AutoencoderKL, ControlNetModel, UNet2DConditionModel
-from ...models.controlnet import ControlNetOutput
-from ...models.modeling_utils import ModelMixin
-from ...schedulers import KarrasDiffusionSchedulers
-from ...utils import (
-    PIL_INTERPOLATION,
-    is_accelerate_available,
-    is_accelerate_version,
-    logging,
-    randn_tensor,
-    replace_example_docstring,
+deprecate(
+    "stable diffusion controlnet",
+    "0.22.0",
+    "Importing `StableDiffusionControlNetPipeline` or `MultiControlNetModel` from diffusers.pipelines.stable_diffusion.pipeline_stable_diffusion_controlnet is deprecated. Please import `from diffusers import StableDiffusionControlNetPipeline` instead.",
+    standard_warn=False,
+    stacklevel=3,
 )
+# <<<<<<< HEAD
 from ..pipeline_utils import DiffusionPipeline
 from . import StableDiffusionPipelineOutput
 from .safety_checker import StableDiffusionSafetyChecker
@@ -1039,3 +1030,5 @@ class StableDiffusionControlNetPipeline(DiffusionPipeline, TextualInversionLoade
 
         has_nsfw_concept = None
         return StableDiffusionPipelineOutput(images=image, nsfw_content_detected=has_nsfw_concept)
+# =======
+# >>>>>>> edc65051937f4a71a68ac3da31b2f27a7e422114

@@ -26,6 +26,7 @@ from .import_utils import (
     is_opencv_available,
     is_torch_available,
     is_torch_version,
+    is_torchsde_available,
 )
 from .logging import get_logger
 
@@ -214,6 +215,13 @@ def require_note_seq(test_case):
     Decorator marking a test that requires note_seq. These tests are skipped when note_seq isn't installed.
     """
     return unittest.skipUnless(is_note_seq_available(), "test requires note_seq")(test_case)
+
+
+def require_torchsde(test_case):
+    """
+    Decorator marking a test that requires torchsde. These tests are skipped when torchsde isn't installed.
+    """
+    return unittest.skipUnless(is_torchsde_available(), "test requires torchsde")(test_case)
 
 
 def load_numpy(arry: Union[str, np.ndarray], local_path: Optional[str] = None) -> np.ndarray:
@@ -506,3 +514,21 @@ class CaptureLogger:
 
     def __repr__(self):
         return f"captured: {self.out}\n"
+
+
+def enable_full_determinism():
+    """
+    Helper function for reproducible behavior during distributed training. See
+    - https://pytorch.org/docs/stable/notes/randomness.html for pytorch
+    """
+    #  Enable PyTorch deterministic mode. This potentially requires either the environment
+    #  variable 'CUDA_LAUNCH_BLOCKING' or 'CUBLAS_WORKSPACE_CONFIG' to be set,
+    # depending on the CUDA version, so we set them both here
+    os.environ["CUDA_LAUNCH_BLOCKING"] = "1"
+    os.environ["CUBLAS_WORKSPACE_CONFIG"] = ":16:8"
+    torch.use_deterministic_algorithms(True)
+
+    # Enable CUDNN deterministic mode
+    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = False
+    torch.backends.cuda.matmul.allow_tf32 = False
