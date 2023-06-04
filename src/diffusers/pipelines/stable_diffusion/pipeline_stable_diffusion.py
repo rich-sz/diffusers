@@ -715,33 +715,19 @@ class StableDiffusionPipeline(DiffusionPipeline, TextualInversionLoaderMixin, Lo
                     if callback is not None and i % callback_steps == 0:
                         callback(i, t, latents)
 
+                        
         if not output_type == "latent":
             image = self.vae.decode(latents / self.vae.config.scaling_factor, return_dict=False)[0]
             image, has_nsfw_concept = self.run_safety_checker(image, device, prompt_embeds.dtype)
+            
         else:
             image = latents
             has_nsfw_concept = None
 
-# <<<<<<< HEAD
-            # 9. Run safety checker
-            # image, has_nsfw_concept = self.run_safety_checker(image, device, prompt_embeds.dtype)
+        do_denormalize = [True] * image.shape[0]
+        image = self.image_processor.postprocess(image, output_type=output_type, do_denormalize=do_denormalize)
 
-            # 10. Convert to PIL
-            image = self.numpy_to_pil(image)
-# =======
-#         if has_nsfw_concept is None:
-#             do_denormalize = [True] * image.shape[0]
-# >>>>>>> edc65051937f4a71a68ac3da31b2f27a7e422114
-#         else:
-#             do_denormalize = [not has_nsfw for has_nsfw in has_nsfw_concept]
-
-# <<<<<<< HEAD
-            # 9. Run safety checker
-            # image, has_nsfw_concept = self.run_safety_checker(image, device, prompt_embeds.dtype)
-# =======
-#         image = self.image_processor.postprocess(image, output_type=output_type, do_denormalize=do_denormalize)
-# >>>>>>> edc65051937f4a71a68ac3da31b2f27a7e422114
-
+        
         # Offload last model to CPU
         if hasattr(self, "final_offload_hook") and self.final_offload_hook is not None:
             self.final_offload_hook.offload()
