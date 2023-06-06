@@ -549,7 +549,6 @@ def main():
             cache_dir=args.cache_dir,
         )
     else:
-        # dataset = load_dataset("imagefolder", data_dir=args.dataset_name, split="train")
         data_files = {}
         if args.train_data_dir is not None:
             data_files["train"] = os.path.join(args.train_data_dir, "**")
@@ -557,8 +556,6 @@ def main():
             "imagefolder",
             data_files=data_files,
             cache_dir=args.cache_dir,
-            # data_dir=args.dataset_name,
-            # split="train"
         )
         # See more about loading custom images at
         # https://huggingface.co/docs/datasets/v2.4.0/en/image_load#imagefolder
@@ -812,7 +809,7 @@ def main():
                 break
 
         if accelerator.is_main_process:
-            if args.validation_prompt is not None and epoch % args.checkpointing_steps == 0:
+            if args.validation_prompt is not None and epoch % args.validation_epochs == 0:
                 logger.info(
                     f"Running validation... \n Generating {args.num_validation_images} images with prompt:"
                     f" {args.validation_prompt}."
