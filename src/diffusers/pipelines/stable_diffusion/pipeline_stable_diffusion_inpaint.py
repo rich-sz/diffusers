@@ -147,13 +147,13 @@ def prepare_mask_and_masked_image(image, mask, height, width, return_image: bool
     # masked_image = image * mask
 
 # <<<<<<< HEAD
-#     return mask, masked_image, image
+    return mask, masked_image, image
 # =======
     # n.b. ensure backwards compatibility as old function does not return image
-    if return_image:
-        return mask, masked_image, image
-
-    return mask, masked_image
+    # if return_image:
+    #     return mask, masked_image, image
+    #
+    # return mask, masked_image
 # >>>>>>> edc65051937f4a71a68ac3da31b2f27a7e422114
 
 
@@ -567,26 +567,15 @@ class StableDiffusionInpaintPipeline(DiffusionPipeline, TextualInversionLoaderMi
         return image
 
     def check_inputs(
-# <<<<<<< HEAD
-            self,
-            prompt,
-            height,
-            width,
-            callback_steps,
-            negative_prompt=None,
-            prompt_embeds=None,
-            negative_prompt_embeds=None,
-# =======
-#         self,
-#         prompt,
-#         height,
-#         width,
-#         strength,
-#         callback_steps,
-#         negative_prompt=None,
-#         prompt_embeds=None,
-#         negative_prompt_embeds=None,
-# >>>>>>> edc65051937f4a71a68ac3da31b2f27a7e422114
+        self,
+        prompt,
+        height,
+        width,
+        strength,
+        callback_steps,
+        negative_prompt=None,
+        prompt_embeds=None,
+        negative_prompt_embeds=None,
     ):
         if strength < 0 or strength > 1:
             raise ValueError(f"The value of strength should in [0.0, 1.0] but is {strength}")
@@ -994,14 +983,10 @@ class StableDiffusionInpaintPipeline(DiffusionPipeline, TextualInversionLoaderMi
             negative_prompt_embeds=negative_prompt_embeds,
         )
 
-# <<<<<<< HEAD
         # 4. Preprocess mask and image
-        mask, masked_image, image_t = prepare_mask_and_masked_image(image, mask_image)
+        mask, masked_image, image_t = prepare_mask_and_masked_image(image, mask_image, height, width)
 
         # 5. set timesteps
-# =======
-#         # 4. set timesteps
-# >>>>>>> edc65051937f4a71a68ac3da31b2f27a7e422114
         self.scheduler.set_timesteps(num_inference_steps, device=device)
         timesteps, num_inference_steps = self.get_timesteps(
             num_inference_steps=num_inference_steps, strength=strength, device=device
@@ -1158,21 +1143,11 @@ class StableDiffusionInpaintPipeline(DiffusionPipeline, TextualInversionLoaderMi
 
         if not output_type == "latent":
             image = self.vae.decode(latents / self.vae.config.scaling_factor, return_dict=False)[0]
-            image, has_nsfw_concept = self.run_safety_checker(image, device, prompt_embeds.dtype)
+            # image, has_nsfw_concept = self.run_safety_checker(image, device, prompt_embeds.dtype)
         else:
             image = latents
-            has_nsfw_concept = None
 
-# <<<<<<< HEAD
-#         # 12. Run safety checker
-#         # image, has_nsfw_concept = self.run_safety_checker(image, device, prompt_embeds.dtype)
-# =======
-#         if has_nsfw_concept is None:
-#             do_denormalize = [True] * image.shape[0]
-#         else:
-#             do_denormalize = [not has_nsfw for has_nsfw in has_nsfw_concept]
-# >>>>>>> edc65051937f4a71a68ac3da31b2f27a7e422114
-
+        do_denormalize = [True] * image.shape[0]
         image = self.image_processor.postprocess(image, output_type=output_type, do_denormalize=do_denormalize)
 
         # Offload last model to CPU

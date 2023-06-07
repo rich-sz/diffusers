@@ -342,6 +342,7 @@ def parse_args():
     parser.add_argument("--noise_offset", type=float, default=0, help="The scale of noise offset.")
     parser.add_argument("--save_loss_threshold", type=float, default=0.003, help="saving when loss less than set.")
     parser.add_argument("--loss_threshold_save_gap", type=float, default=100, help="saving when loss less than set.")
+    parser.add_argument("--pretrain_lora_dir", type=str, default=None, help="init lora weight with pretraining.")
 
 
 
@@ -454,21 +455,24 @@ def main():
     # => 32 layers
 
     # Set correct lora layers
-    lora_attn_procs = {}
-    for name in unet.attn_processors.keys():
-        cross_attention_dim = None if name.endswith("attn1.processor") else unet.config.cross_attention_dim
-        if name.startswith("mid_block"):
-            hidden_size = unet.config.block_out_channels[-1]
-        elif name.startswith("up_blocks"):
-            block_id = int(name[len("up_blocks.")])
-            hidden_size = list(reversed(unet.config.block_out_channels))[block_id]
-        elif name.startswith("down_blocks"):
-            block_id = int(name[len("down_blocks.")])
-            hidden_size = unet.config.block_out_channels[block_id]
+    if args.pretrain_lora_dir:
+        unet.load_attn_procs(args.pretrain_lora_dir)
+    else:
+        lora_attn_procs = {}
+        for name in unet.attn_processors.keys():
+            cross_attention_dim = None if name.endswith("attn1.processor") else unet.config.cross_attention_dim
+            if name.startswith("mid_block"):
+                hidden_size = unet.config.block_out_channels[-1]
+            elif name.startswith("up_blocks"):
+                block_id = int(name[len("up_blocks.")])
+                hidden_size = list(reversed(unet.config.block_out_channels))[block_id]
+            elif name.startswith("down_blocks"):
+                block_id = int(name[len("down_blocks.")])
+                hidden_size = unet.config.block_out_channels[block_id]
 
-        lora_attn_procs[name] = LoRAAttnProcessor(hidden_size=hidden_size, cross_attention_dim=cross_attention_dim)
+            lora_attn_procs[name] = LoRAAttnProcessor(hidden_size=hidden_size, cross_attention_dim=cross_attention_dim)
 
-    unet.set_attn_processor(lora_attn_procs)
+        unet.set_attn_processor(lora_attn_procs)
 
     if args.enable_xformers_memory_efficient_attention:
         if is_xformers_available():
@@ -690,6 +694,7 @@ def main():
     logger.info(f"  Total optimization steps = {args.max_train_steps}")
     logger.info(f"  save loss threshold = {args.save_loss_threshold}")
     logger.info(f"  loss threshold sav gap = {args.loss_threshold_save_gap}")
+    logger.info(f"  pretrain lora = {args.pretrain_lora_dir}")
 
     global_step = 0
     first_epoch = 0
@@ -812,19 +817,23 @@ def main():
                 if accelerator.is_main_process:
                     # condition for saving checkpoint.
                     reach_checkpointing = global_step % args.checkpointing_steps == 0
-                    not_end_step = global_step < args.max_train_steps
                     quite_small_loss = log_loss <= args.save_loss_threshold and not math.isnan(log_loss)
-                    # quite_small_loss = log_loss <= args.save_loss_threshold and not math.isnan(log_loss)
-                    enough_saving_gap = global_step - last_save_step >= args.loss_threshold_save_gap and global_step > 1000
+                    enough_saving_gap = global_step - last_save_step >= args.loss_threshold_save_gap
+                    reach_step_thres = global_step > 3000
 
-                    if reach_checkpointing:
+                    # if reach_checkpointing:
+                    #     save_path = os.path.join(args.output_dir, f"checkpoint-{global_step}-{log_loss}")
+                    #     accelerator.save_state(save_path)
+                    #     logger.info(f"Saved state to {save_path}")
+
+                    can_validate = reach_checkpointing or quite_small_loss and enough_saving_gap
+
+                    if reach_step_thres and can_validate and args.validation_prompt:
+
                         save_path = os.path.join(args.output_dir, f"checkpoint-{global_step}-{log_loss}")
                         accelerator.save_state(save_path)
                         logger.info(f"Saved state to {save_path}")
 
-                    can_validate = reach_checkpointing and not_end_step or quite_small_loss and enough_saving_gap
-
-                    if args.validation_prompt and can_validate:
                         logger.info(
                             f"Running validation... \n Generating {args.num_validation_images} images with prompt:"
                             f" {args.validation_prompt}."
@@ -854,7 +863,7 @@ def main():
                             if tracker.name == "wandb":
                                 tracker.log(
                                     {
-                                        f"validation-{global_step}-{log_loss}": [
+                                        f"checkpoint-{global_step}-{log_loss}": [
                                             wandb.Image(image, caption=f"{i}: {args.validation_prompt}")
                                             for i, image in enumerate(images)
                                         ]
